@@ -2,6 +2,7 @@ extern crate bigint;
 extern crate flatbuffers;
 extern crate protobuf;
 extern crate rand;
+extern crate ssz;
 
 pub mod bench_flatbuffers;
 pub mod bench_protobuf;
@@ -12,6 +13,7 @@ use bigint::{H256, U256};
 use flatbuffers::{get_root, FlatBufferBuilder};
 use protobuf::{parse_from_bytes, Message};
 use rand::{thread_rng, Rng};
+use ssz::{decode_ssz, DecodeError, SszStream};
 
 #[derive(Default, Debug, PartialEq, Eq)]
 pub struct Header {
@@ -134,6 +136,60 @@ impl Header {
             },
         }
     }
+
+    pub fn to_ssz(&self) -> Vec<u8> {
+        let mut ssz = SszStream::new();
+        ssz.append(&self.version);
+        ssz.append_encoded_raw(&self.parent_hash.to_vec());
+        ssz.append(&self.timestamp);
+        ssz.append(&self.number);
+        ssz.append_encoded_raw(&self.txs_commit.to_vec());
+        ssz.append_encoded_raw(&self.txs_proposal.to_vec());
+        ssz.append_encoded_raw(&<[u8; 32]>::from(self.difficulty).to_vec());
+        ssz.append(&self.seal.nonce);
+        ssz.append_encoded_raw(&self.seal.proof.to_vec());
+        ssz.append_encoded_raw(&self.cellbase_id.to_vec());
+        ssz.append_encoded_raw(&self.uncles_hash.to_vec());
+        ssz.drain().to_vec()
+    }
+
+    pub fn from_ssz(data: &[u8]) -> Self {
+        let index = 0;
+        let (version, index) = decode_ssz(data, index).unwrap();
+        let (parent_hash, index) = decode_ssz_h256(data, index).unwrap();
+        let (timestamp, index) = decode_ssz(data, index).unwrap();
+        let (number, index) = decode_ssz(data, index).unwrap();
+        let (txs_commit, index) = decode_ssz_h256(data, index).unwrap();
+        let (txs_proposal, index) = decode_ssz_h256(data, index).unwrap();
+        let (difficulty, index) = decode_ssz_h256(data, index).unwrap();
+        let (nonce, index) = decode_ssz(data, index).unwrap();
+        let (proof, index) = decode_ssz_h256(data, index).unwrap();
+        let (cellbase_id, index) = decode_ssz_h256(data, index).unwrap();
+        let (uncles_hash, _) = decode_ssz_h256(data, index).unwrap();
+        Header {
+            version,
+            parent_hash,
+            timestamp,
+            number,
+            txs_commit,
+            txs_proposal,
+            difficulty: difficulty.into(),
+            cellbase_id,
+            uncles_hash,
+            seal: Seal {
+                nonce,
+                proof: proof.to_vec(),
+            },
+        }
+    }
+}
+
+pub fn decode_ssz_h256(bytes: &[u8], index: usize) -> Result<(H256, usize), DecodeError> {
+    if bytes.len() < 32 || bytes.len() - 32 < index {
+        Err(DecodeError::TooShort)
+    } else {
+        Ok((H256::from(&bytes[index..(index + 32)]), index + 32))
+    }
 }
 
 #[cfg(test)]
@@ -159,6 +215,17 @@ mod tests {
             let header = Header::random();
             let data = header.to_protobuf();
             assert_eq!(header, Header::from_protobuf(&data));
+        }
+    }
+
+    mod ssz {
+        use super::*;
+
+        #[test]
+        fn ser_de() {
+            let header = Header::random();
+            let data = header.to_ssz();
+            assert_eq!(header, Header::from_ssz(&data));
         }
     }
 }
