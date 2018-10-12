@@ -1,0 +1,32 @@
+syntax = "proto3";
+
+message SyncMessage {
+    oneof payload {
+        GetHeaders getheaders = 1;
+        Headers headers = 2;
+    }
+}
+
+message GetHeaders {
+    uint32 version = 1;
+    repeated bytes block_locator_hashes = 2;
+    bytes hash_stop = 3;
+}
+
+message Headers {
+    repeated Header headers = 1;
+}
+
+message Header {
+    uint32 version           = 1;
+    bytes  parent_hash       = 2;
+    uint64 timestamp         = 3;
+    uint64 number            = 4;
+    bytes  txs_commit        = 5;
+    bytes  txs_proposal      = 6;
+    bytes  difficulty        = 7;
+    uint64 nonce             = 8;
+    bytes  proof             = 9;
+    bytes  cellbase_id       = 10;
+    bytes  uncles_hash       = 11;
+}
