@@ -736,3 +736,591 @@ impl<'a: 'b, 'b> HeaderBuilder<'a, 'b> {
         flatbuffers::WIPOffset::new(o.value())
     }
 }
+
+pub enum BlockOffset {}
+#[derive(Copy, Clone, Debug, PartialEq)]
+
+pub struct Block<'a> {
+    pub _tab: flatbuffers::Table<'a>,
+}
+
+impl<'a> flatbuffers::Follow<'a> for Block<'a> {
+    type Inner = Block<'a>;
+    #[inline]
+    fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
+        Self {
+            _tab: flatbuffers::Table { buf: buf, loc: loc },
+        }
+    }
+}
+
+impl<'a> Block<'a> {
+    #[inline]
+    pub fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
+        Block { _tab: table }
+    }
+    #[allow(unused_mut)]
+    pub fn create<'bldr: 'args, 'args: 'mut_bldr, 'mut_bldr>(
+        _fbb: &'mut_bldr mut flatbuffers::FlatBufferBuilder<'bldr>,
+        args: &'args BlockArgs<'args>,
+    ) -> flatbuffers::WIPOffset<Block<'bldr>> {
+        let mut builder = BlockBuilder::new(_fbb);
+        if let Some(x) = args.transactions {
+            builder.add_transactions(x);
+        }
+        if let Some(x) = args.header {
+            builder.add_header(x);
+        }
+        builder.finish()
+    }
+
+    pub const VT_HEADER: flatbuffers::VOffsetT = 4;
+    pub const VT_TRANSACTIONS: flatbuffers::VOffsetT = 6;
+
+    #[inline]
+    pub fn header(&self) -> Option<Header<'a>> {
+        self._tab
+            .get::<flatbuffers::ForwardsUOffset<Header<'a>>>(Block::VT_HEADER, None)
+    }
+    #[inline]
+    pub fn transactions(
+        &self,
+    ) -> Option<flatbuffers::Vector<flatbuffers::ForwardsUOffset<Transaction<'a>>>> {
+        self._tab.get::<flatbuffers::ForwardsUOffset<
+            flatbuffers::Vector<flatbuffers::ForwardsUOffset<Transaction<'a>>>,
+        >>(Block::VT_TRANSACTIONS, None)
+    }
+}
+
+pub struct BlockArgs<'a> {
+    pub header: Option<flatbuffers::WIPOffset<Header<'a>>>,
+    pub transactions: Option<
+        flatbuffers::WIPOffset<
+            flatbuffers::Vector<'a, flatbuffers::ForwardsUOffset<Transaction<'a>>>,
+        >,
+    >,
+}
+impl<'a> Default for BlockArgs<'a> {
+    #[inline]
+    fn default() -> Self {
+        BlockArgs {
+            header: None,
+            transactions: None,
+        }
+    }
+}
+pub struct BlockBuilder<'a: 'b, 'b> {
+    fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
+    start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
+}
+impl<'a: 'b, 'b> BlockBuilder<'a, 'b> {
+    #[inline]
+    pub fn add_header(&mut self, header: flatbuffers::WIPOffset<Header<'b>>) {
+        self.fbb_
+            .push_slot_always::<flatbuffers::WIPOffset<Header>>(Block::VT_HEADER, header);
+    }
+    #[inline]
+    pub fn add_transactions(
+        &mut self,
+        transactions: flatbuffers::WIPOffset<
+            flatbuffers::Vector<'b, flatbuffers::ForwardsUOffset<Transaction<'b>>>,
+        >,
+    ) {
+        self.fbb_
+            .push_slot_always::<flatbuffers::WIPOffset<_>>(Block::VT_TRANSACTIONS, transactions);
+    }
+    #[inline]
+    pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> BlockBuilder<'a, 'b> {
+        let start = _fbb.start_table();
+        BlockBuilder {
+            fbb_: _fbb,
+            start_: start,
+        }
+    }
+    #[inline]
+    pub fn finish(self) -> flatbuffers::WIPOffset<Block<'a>> {
+        let o = self.fbb_.end_table(self.start_);
+        flatbuffers::WIPOffset::new(o.value())
+    }
+}
+
+pub enum TransactionOffset {}
+#[derive(Copy, Clone, Debug, PartialEq)]
+
+pub struct Transaction<'a> {
+    pub _tab: flatbuffers::Table<'a>,
+}
+
+impl<'a> flatbuffers::Follow<'a> for Transaction<'a> {
+    type Inner = Transaction<'a>;
+    #[inline]
+    fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
+        Self {
+            _tab: flatbuffers::Table { buf: buf, loc: loc },
+        }
+    }
+}
+
+impl<'a> Transaction<'a> {
+    #[inline]
+    pub fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
+        Transaction { _tab: table }
+    }
+    #[allow(unused_mut)]
+    pub fn create<'bldr: 'args, 'args: 'mut_bldr, 'mut_bldr>(
+        _fbb: &'mut_bldr mut flatbuffers::FlatBufferBuilder<'bldr>,
+        args: &'args TransactionArgs<'args>,
+    ) -> flatbuffers::WIPOffset<Transaction<'bldr>> {
+        let mut builder = TransactionBuilder::new(_fbb);
+        if let Some(x) = args.outputs {
+            builder.add_outputs(x);
+        }
+        if let Some(x) = args.inputs {
+            builder.add_inputs(x);
+        }
+        if let Some(x) = args.deps {
+            builder.add_deps(x);
+        }
+        builder.add_version(args.version);
+        builder.finish()
+    }
+
+    pub const VT_VERSION: flatbuffers::VOffsetT = 4;
+    pub const VT_DEPS: flatbuffers::VOffsetT = 6;
+    pub const VT_INPUTS: flatbuffers::VOffsetT = 8;
+    pub const VT_OUTPUTS: flatbuffers::VOffsetT = 10;
+
+    #[inline]
+    pub fn version(&self) -> u32 {
+        self._tab
+            .get::<u32>(Transaction::VT_VERSION, Some(0))
+            .unwrap()
+    }
+    #[inline]
+    pub fn deps(&self) -> Option<flatbuffers::Vector<flatbuffers::ForwardsUOffset<OutPoint<'a>>>> {
+        self._tab.get::<flatbuffers::ForwardsUOffset<
+            flatbuffers::Vector<flatbuffers::ForwardsUOffset<OutPoint<'a>>>,
+        >>(Transaction::VT_DEPS, None)
+    }
+    #[inline]
+    pub fn inputs(
+        &self,
+    ) -> Option<flatbuffers::Vector<flatbuffers::ForwardsUOffset<CellInput<'a>>>> {
+        self._tab.get::<flatbuffers::ForwardsUOffset<
+            flatbuffers::Vector<flatbuffers::ForwardsUOffset<CellInput<'a>>>,
+        >>(Transaction::VT_INPUTS, None)
+    }
+    #[inline]
+    pub fn outputs(
+        &self,
+    ) -> Option<flatbuffers::Vector<flatbuffers::ForwardsUOffset<CellOutput<'a>>>> {
+        self._tab.get::<flatbuffers::ForwardsUOffset<
+            flatbuffers::Vector<flatbuffers::ForwardsUOffset<CellOutput<'a>>>,
+        >>(Transaction::VT_OUTPUTS, None)
+    }
+}
+
+pub struct TransactionArgs<'a> {
+    pub version: u32,
+    pub deps: Option<
+        flatbuffers::WIPOffset<flatbuffers::Vector<'a, flatbuffers::ForwardsUOffset<OutPoint<'a>>>>,
+    >,
+    pub inputs: Option<
+        flatbuffers::WIPOffset<
+            flatbuffers::Vector<'a, flatbuffers::ForwardsUOffset<CellInput<'a>>>,
+        >,
+    >,
+    pub outputs: Option<
+        flatbuffers::WIPOffset<
+            flatbuffers::Vector<'a, flatbuffers::ForwardsUOffset<CellOutput<'a>>>,
+        >,
+    >,
+}
+impl<'a> Default for TransactionArgs<'a> {
+    #[inline]
+    fn default() -> Self {
+        TransactionArgs {
+            version: 0,
+            deps: None,
+            inputs: None,
+            outputs: None,
+        }
+    }
+}
+pub struct TransactionBuilder<'a: 'b, 'b> {
+    fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
+    start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
+}
+impl<'a: 'b, 'b> TransactionBuilder<'a, 'b> {
+    #[inline]
+    pub fn add_version(&mut self, version: u32) {
+        self.fbb_
+            .push_slot::<u32>(Transaction::VT_VERSION, version, 0);
+    }
+    #[inline]
+    pub fn add_deps(
+        &mut self,
+        deps: flatbuffers::WIPOffset<
+            flatbuffers::Vector<'b, flatbuffers::ForwardsUOffset<OutPoint<'b>>>,
+        >,
+    ) {
+        self.fbb_
+            .push_slot_always::<flatbuffers::WIPOffset<_>>(Transaction::VT_DEPS, deps);
+    }
+    #[inline]
+    pub fn add_inputs(
+        &mut self,
+        inputs: flatbuffers::WIPOffset<
+            flatbuffers::Vector<'b, flatbuffers::ForwardsUOffset<CellInput<'b>>>,
+        >,
+    ) {
+        self.fbb_
+            .push_slot_always::<flatbuffers::WIPOffset<_>>(Transaction::VT_INPUTS, inputs);
+    }
+    #[inline]
+    pub fn add_outputs(
+        &mut self,
+        outputs: flatbuffers::WIPOffset<
+            flatbuffers::Vector<'b, flatbuffers::ForwardsUOffset<CellOutput<'b>>>,
+        >,
+    ) {
+        self.fbb_
+            .push_slot_always::<flatbuffers::WIPOffset<_>>(Transaction::VT_OUTPUTS, outputs);
+    }
+    #[inline]
+    pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> TransactionBuilder<'a, 'b> {
+        let start = _fbb.start_table();
+        TransactionBuilder {
+            fbb_: _fbb,
+            start_: start,
+        }
+    }
+    #[inline]
+    pub fn finish(self) -> flatbuffers::WIPOffset<Transaction<'a>> {
+        let o = self.fbb_.end_table(self.start_);
+        flatbuffers::WIPOffset::new(o.value())
+    }
+}
+
+pub enum OutPointOffset {}
+#[derive(Copy, Clone, Debug, PartialEq)]
+
+pub struct OutPoint<'a> {
+    pub _tab: flatbuffers::Table<'a>,
+}
+
+impl<'a> flatbuffers::Follow<'a> for OutPoint<'a> {
+    type Inner = OutPoint<'a>;
+    #[inline]
+    fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
+        Self {
+            _tab: flatbuffers::Table { buf: buf, loc: loc },
+        }
+    }
+}
+
+impl<'a> OutPoint<'a> {
+    #[inline]
+    pub fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
+        OutPoint { _tab: table }
+    }
+    #[allow(unused_mut)]
+    pub fn create<'bldr: 'args, 'args: 'mut_bldr, 'mut_bldr>(
+        _fbb: &'mut_bldr mut flatbuffers::FlatBufferBuilder<'bldr>,
+        args: &'args OutPointArgs<'args>,
+    ) -> flatbuffers::WIPOffset<OutPoint<'bldr>> {
+        let mut builder = OutPointBuilder::new(_fbb);
+        builder.add_index(args.index);
+        if let Some(x) = args.hash {
+            builder.add_hash(x);
+        }
+        builder.finish()
+    }
+
+    pub const VT_HASH: flatbuffers::VOffsetT = 4;
+    pub const VT_INDEX: flatbuffers::VOffsetT = 6;
+
+    #[inline]
+    pub fn hash(&self) -> Option<&'a [u8]> {
+        self._tab
+            .get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, u8>>>(
+                OutPoint::VT_HASH,
+                None,
+            ).map(|v| v.safe_slice())
+    }
+    #[inline]
+    pub fn index(&self) -> u32 {
+        self._tab.get::<u32>(OutPoint::VT_INDEX, Some(0)).unwrap()
+    }
+}
+
+pub struct OutPointArgs<'a> {
+    pub hash: Option<flatbuffers::WIPOffset<flatbuffers::Vector<'a, u8>>>,
+    pub index: u32,
+}
+impl<'a> Default for OutPointArgs<'a> {
+    #[inline]
+    fn default() -> Self {
+        OutPointArgs {
+            hash: None,
+            index: 0,
+        }
+    }
+}
+pub struct OutPointBuilder<'a: 'b, 'b> {
+    fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
+    start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
+}
+impl<'a: 'b, 'b> OutPointBuilder<'a, 'b> {
+    #[inline]
+    pub fn add_hash(&mut self, hash: flatbuffers::WIPOffset<flatbuffers::Vector<'b, u8>>) {
+        self.fbb_
+            .push_slot_always::<flatbuffers::WIPOffset<_>>(OutPoint::VT_HASH, hash);
+    }
+    #[inline]
+    pub fn add_index(&mut self, index: u32) {
+        self.fbb_.push_slot::<u32>(OutPoint::VT_INDEX, index, 0);
+    }
+    #[inline]
+    pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> OutPointBuilder<'a, 'b> {
+        let start = _fbb.start_table();
+        OutPointBuilder {
+            fbb_: _fbb,
+            start_: start,
+        }
+    }
+    #[inline]
+    pub fn finish(self) -> flatbuffers::WIPOffset<OutPoint<'a>> {
+        let o = self.fbb_.end_table(self.start_);
+        flatbuffers::WIPOffset::new(o.value())
+    }
+}
+
+pub enum CellInputOffset {}
+#[derive(Copy, Clone, Debug, PartialEq)]
+
+pub struct CellInput<'a> {
+    pub _tab: flatbuffers::Table<'a>,
+}
+
+impl<'a> flatbuffers::Follow<'a> for CellInput<'a> {
+    type Inner = CellInput<'a>;
+    #[inline]
+    fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
+        Self {
+            _tab: flatbuffers::Table { buf: buf, loc: loc },
+        }
+    }
+}
+
+impl<'a> CellInput<'a> {
+    #[inline]
+    pub fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
+        CellInput { _tab: table }
+    }
+    #[allow(unused_mut)]
+    pub fn create<'bldr: 'args, 'args: 'mut_bldr, 'mut_bldr>(
+        _fbb: &'mut_bldr mut flatbuffers::FlatBufferBuilder<'bldr>,
+        args: &'args CellInputArgs<'args>,
+    ) -> flatbuffers::WIPOffset<CellInput<'bldr>> {
+        let mut builder = CellInputBuilder::new(_fbb);
+        if let Some(x) = args.unlock {
+            builder.add_unlock(x);
+        }
+        builder.add_index(args.index);
+        if let Some(x) = args.hash {
+            builder.add_hash(x);
+        }
+        builder.finish()
+    }
+
+    pub const VT_HASH: flatbuffers::VOffsetT = 4;
+    pub const VT_INDEX: flatbuffers::VOffsetT = 6;
+    pub const VT_UNLOCK: flatbuffers::VOffsetT = 8;
+
+    #[inline]
+    pub fn hash(&self) -> Option<&'a [u8]> {
+        self._tab
+            .get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, u8>>>(
+                CellInput::VT_HASH,
+                None,
+            ).map(|v| v.safe_slice())
+    }
+    #[inline]
+    pub fn index(&self) -> u32 {
+        self._tab.get::<u32>(CellInput::VT_INDEX, Some(0)).unwrap()
+    }
+    #[inline]
+    pub fn unlock(&self) -> Option<&'a [u8]> {
+        self._tab
+            .get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, u8>>>(
+                CellInput::VT_UNLOCK,
+                None,
+            ).map(|v| v.safe_slice())
+    }
+}
+
+pub struct CellInputArgs<'a> {
+    pub hash: Option<flatbuffers::WIPOffset<flatbuffers::Vector<'a, u8>>>,
+    pub index: u32,
+    pub unlock: Option<flatbuffers::WIPOffset<flatbuffers::Vector<'a, u8>>>,
+}
+impl<'a> Default for CellInputArgs<'a> {
+    #[inline]
+    fn default() -> Self {
+        CellInputArgs {
+            hash: None,
+            index: 0,
+            unlock: None,
+        }
+    }
+}
+pub struct CellInputBuilder<'a: 'b, 'b> {
+    fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
+    start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
+}
+impl<'a: 'b, 'b> CellInputBuilder<'a, 'b> {
+    #[inline]
+    pub fn add_hash(&mut self, hash: flatbuffers::WIPOffset<flatbuffers::Vector<'b, u8>>) {
+        self.fbb_
+            .push_slot_always::<flatbuffers::WIPOffset<_>>(CellInput::VT_HASH, hash);
+    }
+    #[inline]
+    pub fn add_index(&mut self, index: u32) {
+        self.fbb_.push_slot::<u32>(CellInput::VT_INDEX, index, 0);
+    }
+    #[inline]
+    pub fn add_unlock(&mut self, unlock: flatbuffers::WIPOffset<flatbuffers::Vector<'b, u8>>) {
+        self.fbb_
+            .push_slot_always::<flatbuffers::WIPOffset<_>>(CellInput::VT_UNLOCK, unlock);
+    }
+    #[inline]
+    pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> CellInputBuilder<'a, 'b> {
+        let start = _fbb.start_table();
+        CellInputBuilder {
+            fbb_: _fbb,
+            start_: start,
+        }
+    }
+    #[inline]
+    pub fn finish(self) -> flatbuffers::WIPOffset<CellInput<'a>> {
+        let o = self.fbb_.end_table(self.start_);
+        flatbuffers::WIPOffset::new(o.value())
+    }
+}
+
+pub enum CellOutputOffset {}
+#[derive(Copy, Clone, Debug, PartialEq)]
+
+pub struct CellOutput<'a> {
+    pub _tab: flatbuffers::Table<'a>,
+}
+
+impl<'a> flatbuffers::Follow<'a> for CellOutput<'a> {
+    type Inner = CellOutput<'a>;
+    #[inline]
+    fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
+        Self {
+            _tab: flatbuffers::Table { buf: buf, loc: loc },
+        }
+    }
+}
+
+impl<'a> CellOutput<'a> {
+    #[inline]
+    pub fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
+        CellOutput { _tab: table }
+    }
+    #[allow(unused_mut)]
+    pub fn create<'bldr: 'args, 'args: 'mut_bldr, 'mut_bldr>(
+        _fbb: &'mut_bldr mut flatbuffers::FlatBufferBuilder<'bldr>,
+        args: &'args CellOutputArgs<'args>,
+    ) -> flatbuffers::WIPOffset<CellOutput<'bldr>> {
+        let mut builder = CellOutputBuilder::new(_fbb);
+        builder.add_capacity(args.capacity);
+        if let Some(x) = args.lock {
+            builder.add_lock(x);
+        }
+        if let Some(x) = args.data {
+            builder.add_data(x);
+        }
+        builder.finish()
+    }
+
+    pub const VT_CAPACITY: flatbuffers::VOffsetT = 4;
+    pub const VT_DATA: flatbuffers::VOffsetT = 6;
+    pub const VT_LOCK: flatbuffers::VOffsetT = 8;
+
+    #[inline]
+    pub fn capacity(&self) -> u64 {
+        self._tab
+            .get::<u64>(CellOutput::VT_CAPACITY, Some(0))
+            .unwrap()
+    }
+    #[inline]
+    pub fn data(&self) -> Option<&'a [u8]> {
+        self._tab
+            .get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, u8>>>(
+                CellOutput::VT_DATA,
+                None,
+            ).map(|v| v.safe_slice())
+    }
+    #[inline]
+    pub fn lock(&self) -> Option<&'a [u8]> {
+        self._tab
+            .get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, u8>>>(
+                CellOutput::VT_LOCK,
+                None,
+            ).map(|v| v.safe_slice())
+    }
+}
+
+pub struct CellOutputArgs<'a> {
+    pub capacity: u64,
+    pub data: Option<flatbuffers::WIPOffset<flatbuffers::Vector<'a, u8>>>,
+    pub lock: Option<flatbuffers::WIPOffset<flatbuffers::Vector<'a, u8>>>,
+}
+impl<'a> Default for CellOutputArgs<'a> {
+    #[inline]
+    fn default() -> Self {
+        CellOutputArgs {
+            capacity: 0,
+            data: None,
+            lock: None,
+        }
+    }
+}
+pub struct CellOutputBuilder<'a: 'b, 'b> {
+    fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
+    start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
+}
+impl<'a: 'b, 'b> CellOutputBuilder<'a, 'b> {
+    #[inline]
+    pub fn add_capacity(&mut self, capacity: u64) {
+        self.fbb_
+            .push_slot::<u64>(CellOutput::VT_CAPACITY, capacity, 0);
+    }
+    #[inline]
+    pub fn add_data(&mut self, data: flatbuffers::WIPOffset<flatbuffers::Vector<'b, u8>>) {
+        self.fbb_
+            .push_slot_always::<flatbuffers::WIPOffset<_>>(CellOutput::VT_DATA, data);
+    }
+    #[inline]
+    pub fn add_lock(&mut self, lock: flatbuffers::WIPOffset<flatbuffers::Vector<'b, u8>>) {
+        self.fbb_
+            .push_slot_always::<flatbuffers::WIPOffset<_>>(CellOutput::VT_LOCK, lock);
+    }
+    #[inline]
+    pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> CellOutputBuilder<'a, 'b> {
+        let start = _fbb.start_table();
+        CellOutputBuilder {
+            fbb_: _fbb,
+            start_: start,
+        }
+    }
+    #[inline]
+    pub fn finish(self) -> flatbuffers::WIPOffset<CellOutput<'a>> {
+        let o = self.fbb_.end_table(self.start_);
+        flatbuffers::WIPOffset::new(o.value())
+    }
+}

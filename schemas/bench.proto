@@ -3,14 +3,14 @@ syntax = "proto3";
 message SyncMessage {
     oneof payload {
         GetHeaders getheaders = 1;
-        Headers headers = 2;
+        Headers    headers    = 2;
     }
 }
 
 message GetHeaders {
-    uint32 version = 1;
+    uint32         version              = 1;
     repeated bytes block_locator_hashes = 2;
-    bytes hash_stop = 3;
+    bytes          hash_stop            = 3;
 }
 
 message Headers {
@@ -29,4 +29,33 @@ message Header {
     bytes  proof             = 9;
     bytes  cellbase_id       = 10;
     bytes  uncles_hash       = 11;
+}
+
+message Block {
+    Header header                     = 1;
+    repeated Transaction transactions = 2;
+}
+
+message Transaction {
+    uint32              version = 1;
+    repeated OutPoint   deps    = 2;
+    repeated CellInput  inputs  = 3;
+    repeated CellOutput outputs = 4;
+}
+
+message OutPoint {
+    bytes  hash  = 1;
+    uint32 index = 2;
+}
+
+message CellInput {
+    bytes  hash   = 1;
+    uint32 index  = 2;
+    bytes  unlock = 3;
+}
+
+message CellOutput {
+    uint64 capacity = 1;
+    bytes  data     = 2;
+    bytes  lock     = 3;
 }

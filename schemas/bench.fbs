@@ -34,3 +34,32 @@ table Header {
     cellbase_id:    [ubyte];
     uncles_hash:    [ubyte];
 }
+
+table Block {
+    header:          Header;
+    transactions:    [Transaction];
+}
+
+table Transaction {
+    version:        uint32;
+    deps:           [OutPoint];
+    inputs:         [CellInput];
+    outputs:        [CellOutput];
+}
+
+table OutPoint {
+    hash:           [ubyte];
+    index:          uint32;
+}
+
+table CellInput {
+    hash:           [ubyte];
+    index:          uint32;
+    unlock:         [ubyte];
+}
+
+table CellOutput {
+    capacity:       uint64;
+    data:           [ubyte];
+    lock:           [ubyte];
+}

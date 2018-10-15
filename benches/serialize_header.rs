@@ -13,7 +13,7 @@ fn bench(c: &mut Criterion) {
     let ssz = Fun::new("ssz", |b, h: &Header| b.iter(|| h.to_ssz()));
     let functions = vec![flatbuffers, protobuf, ssz];
     let header = Header::random();
-    c.bench_functions("serialize", functions, header);
+    c.bench_functions("serialize_header", functions, header);
 }
 
 criterion_group!(benches, bench);

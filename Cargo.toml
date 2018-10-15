@@ -14,9 +14,17 @@ ssz = { git = "https://github.com/sigp/lighthouse" }
 criterion = "0.2"
 
 [[bench]]
-name = "serialize"
+name = "serialize_block"
 harness = false
 
 [[bench]]
-name = "deserialize"
+name = "deserialize_block"
+harness = false
+
+[[bench]]
+name = "serialize_header"
+harness = false
+
+[[bench]]
+name = "deserialize_header"
 harness = false
