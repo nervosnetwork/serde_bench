@@ -17,16 +17,16 @@
 用了两个实际数据结构 Header 和 Block 进行序列化和反序例化测试，其中每个 Block 含有100个 Transaction ，每个 Transaction 含有 3 个 inputs / outputs
 
 ### Serialize Header
-![serialize_header](.images/serialize_header.svg)
+![serialize_header](images/serialize_header.svg)
 
 ### Serialize Block
-![serialize_block](.images/serialize_block.svg)
+![serialize_block](images/serialize_block.svg)
 
 ### Deserialize Header
-![deserialize_header](.images/deserialize_header.svg)
+![deserialize_header](images/deserialize_header.svg)
 
 ### Deserialize Block
-![deserialize_block](.images/deserialize_block.svg)
+![deserialize_block](images/deserialize_block.svg)
 
 ## Data Size
 |        | FlatBuffers | Protobuf | Ssz    |
