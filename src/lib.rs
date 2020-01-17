@@ -1,9 +1,3 @@
-extern crate bigint;
-extern crate flatbuffers;
-extern crate protobuf;
-extern crate rand;
-extern crate ssz;
-
 pub mod bench_flatbuffers;
 pub mod bench_protobuf;
 
@@ -21,7 +15,6 @@ use flatbuffers::{get_root, FlatBufferBuilder};
 use protobuf::{parse_from_bytes, Message};
 use rand::distributions::Standard;
 use rand::{thread_rng, Rng};
-use ssz::{decode_ssz, decode_ssz_list, Decodable, DecodeError, Encodable, SszStream};
 use std::borrow::Borrow;
 
 pub struct FlatbuffersVectorIterator<'a, T: flatbuffers::Follow<'a> + 'a> {
@@ -160,57 +153,6 @@ impl<'a> From<&'a Header> for ProtobufHeader {
     }
 }
 
-impl Encodable for Header {
-    fn ssz_append(&self, s: &mut SszStream) {
-        s.append(&self.version);
-        s.append_encoded_raw(&self.parent_hash.to_vec());
-        s.append(&self.timestamp);
-        s.append(&self.number);
-        s.append_encoded_raw(&self.txs_commit.to_vec());
-        s.append_encoded_raw(&self.txs_proposal.to_vec());
-        s.append_encoded_raw(&<[u8; 32]>::from(self.difficulty).to_vec());
-        s.append(&self.seal.nonce);
-        s.append_encoded_raw(&self.seal.proof.to_vec());
-        s.append_encoded_raw(&self.cellbase_id.to_vec());
-        s.append_encoded_raw(&self.uncles_hash.to_vec());
-    }
-}
-
-impl Decodable for Header {
-    fn ssz_decode(bytes: &[u8], index: usize) -> Result<(Self, usize), DecodeError> {
-        let (version, index) = decode_ssz(bytes, index)?;
-        let (parent_hash, index) = decode_ssz_h256(bytes, index)?;
-        let (timestamp, index) = decode_ssz(bytes, index)?;
-        let (number, index) = decode_ssz(bytes, index)?;
-        let (txs_commit, index) = decode_ssz_h256(bytes, index)?;
-        let (txs_proposal, index) = decode_ssz_h256(bytes, index)?;
-        let (difficulty, index) = decode_ssz_h256(bytes, index)?;
-        let (nonce, index) = decode_ssz(bytes, index)?;
-        let (proof, index) = decode_ssz_h256(bytes, index)?;
-        let (cellbase_id, index) = decode_ssz_h256(bytes, index)?;
-        let (uncles_hash, index) = decode_ssz_h256(bytes, index)?;
-
-        Ok((
-            Header {
-                version,
-                parent_hash,
-                timestamp,
-                number,
-                txs_commit,
-                txs_proposal,
-                difficulty: difficulty.into(),
-                cellbase_id,
-                uncles_hash,
-                seal: Seal {
-                    nonce,
-                    proof: proof.to_vec(),
-                },
-            },
-            index,
-        ))
-    }
-}
-
 impl Header {
     pub fn random() -> Self {
         Header {
@@ -272,16 +214,6 @@ impl Header {
         let header = parse_from_bytes::<ProtobufHeader>(data).unwrap();
         header.borrow().into()
     }
-
-    pub fn to_ssz(&self) -> Vec<u8> {
-        let mut ssz = SszStream::new();
-        ssz.append(self);
-        ssz.drain().to_vec()
-    }
-
-    pub fn from_ssz(data: &[u8]) -> Self {
-        decode_ssz(data, 0).unwrap().0
-    }
 }
 
 impl<'a> From<&'a FbsBlock<'a>> for Block {
@@ -310,27 +242,6 @@ impl<'a> From<&'a ProtobufBlock> for Block {
             header: block.get_header().borrow().into(),
             transactions: block.get_transactions().iter().map(Into::into).collect(),
         }
-    }
-}
-
-impl Encodable for Block {
-    fn ssz_append(&self, s: &mut SszStream) {
-        s.append(&self.header);
-        s.append_vec(&self.transactions);
-    }
-}
-
-impl Decodable for Block {
-    fn ssz_decode(bytes: &[u8], index: usize) -> Result<(Self, usize), DecodeError> {
-        let (header, index) = decode_ssz(bytes, index)?;
-        let (transactions, index) = decode_ssz_list(bytes, index)?;
-        Ok((
-            Block {
-                header,
-                transactions,
-            },
-            index,
-        ))
     }
 }
 
@@ -384,7 +295,8 @@ impl Block {
                         builder.add_hash(hash);
                         builder.add_index(out_point.index);
                         builder.finish()
-                    }).collect::<Vec<_>>();
+                    })
+                    .collect::<Vec<_>>();
                 let deps = fbb.create_vector(&vec);
 
                 let vec = transaction
@@ -398,7 +310,8 @@ impl Block {
                         builder.add_index(input.previous_output.index);
                         builder.add_unlock(unlock);
                         builder.finish()
-                    }).collect::<Vec<_>>();
+                    })
+                    .collect::<Vec<_>>();
                 let inputs = fbb.create_vector(&vec);
 
                 let vec = transaction
@@ -412,7 +325,8 @@ impl Block {
                         builder.add_data(data);
                         builder.add_lock(lock);
                         builder.finish()
-                    }).collect::<Vec<_>>();
+                    })
+                    .collect::<Vec<_>>();
                 let outputs = fbb.create_vector(&vec);
 
                 let mut builder = TransactionBuilder::new(fbb);
@@ -421,7 +335,8 @@ impl Block {
                 builder.add_inputs(inputs);
                 builder.add_outputs(outputs);
                 builder.finish()
-            }).collect::<Vec<_>>();
+            })
+            .collect::<Vec<_>>();
 
         let transactions = fbb.create_vector(&vec);
 
@@ -447,16 +362,6 @@ impl Block {
     pub fn from_protobuf(data: &[u8]) -> Self {
         let block = parse_from_bytes::<ProtobufBlock>(data).unwrap();
         block.borrow().into()
-    }
-
-    pub fn to_ssz(&self) -> Vec<u8> {
-        let mut ssz = SszStream::new();
-        ssz.append(self);
-        ssz.drain().to_vec()
-    }
-
-    pub fn from_ssz(data: &[u8]) -> Self {
-        decode_ssz(data, 0).unwrap().0
     }
 }
 
@@ -516,34 +421,6 @@ impl<'a> From<&'a Transaction> for ProtobufTransaction {
     }
 }
 
-impl Encodable for Transaction {
-    fn ssz_append(&self, s: &mut SszStream) {
-        s.append(&self.version);
-        s.append_vec(&self.deps);
-        s.append_vec(&self.inputs);
-        s.append_vec(&self.outputs);
-    }
-}
-
-impl Decodable for Transaction {
-    fn ssz_decode(bytes: &[u8], index: usize) -> Result<(Self, usize), DecodeError> {
-        let (version, index) = decode_ssz(bytes, index)?;
-        let (deps, index) = decode_ssz_list(bytes, index)?;
-        let (inputs, index) = decode_ssz_list(bytes, index)?;
-        let (outputs, index) = decode_ssz_list(bytes, index)?;
-
-        Ok((
-            Transaction {
-                version,
-                deps,
-                inputs,
-                outputs,
-            },
-            index,
-        ))
-    }
-}
-
 impl OutPoint {
     pub fn random() -> Self {
         OutPoint {
@@ -577,27 +454,6 @@ impl<'a> From<&'a OutPoint> for ProtobufOutPoint {
         result.set_hash(out_point.hash.to_vec());
         result.set_index(out_point.index);
         result
-    }
-}
-
-impl Encodable for OutPoint {
-    fn ssz_append(&self, s: &mut SszStream) {
-        s.append_encoded_raw(&self.hash.to_vec());
-        s.append(&self.index);
-    }
-}
-
-impl Decodable for OutPoint {
-    fn ssz_decode(bytes: &[u8], index: usize) -> Result<(Self, usize), DecodeError> {
-        let (hash, index) = decode_ssz_h256(bytes, index)?;
-        let (oindex, index) = decode_ssz(bytes, index)?;
-        Ok((
-            OutPoint {
-                hash,
-                index: oindex,
-            },
-            index,
-        ))
     }
 }
 
@@ -644,32 +500,6 @@ impl<'a> From<&'a CellInput> for ProtobufCellInput {
     }
 }
 
-impl Encodable for CellInput {
-    fn ssz_append(&self, s: &mut SszStream) {
-        s.append_encoded_raw(&self.previous_output.hash.to_vec());
-        s.append(&self.previous_output.index);
-        s.append_vec(&self.unlock.to_vec());
-    }
-}
-
-impl Decodable for CellInput {
-    fn ssz_decode(bytes: &[u8], index: usize) -> Result<(Self, usize), DecodeError> {
-        let (hash, index) = decode_ssz_h256(bytes, index)?;
-        let (oindex, index) = decode_ssz(bytes, index)?;
-        let (unlock, index) = decode_ssz_list(bytes, index)?;
-        Ok((
-            CellInput {
-                previous_output: OutPoint {
-                    hash,
-                    index: oindex,
-                },
-                unlock,
-            },
-            index,
-        ))
-    }
-}
-
 impl CellOutput {
     pub fn random() -> Self {
         CellOutput {
@@ -707,38 +537,6 @@ impl<'a> From<&'a CellOutput> for ProtobufCellOutput {
         result.set_data(cell_output.data.to_vec());
         result.set_lock(cell_output.lock.to_vec());
         result
-    }
-}
-
-impl Encodable for CellOutput {
-    fn ssz_append(&self, s: &mut SszStream) {
-        s.append(&self.capacity);
-        s.append_vec(&self.data.to_vec());
-        s.append_encoded_raw(&self.lock.to_vec());
-    }
-}
-
-impl Decodable for CellOutput {
-    fn ssz_decode(bytes: &[u8], index: usize) -> Result<(Self, usize), DecodeError> {
-        let (capacity, index) = decode_ssz(bytes, index)?;
-        let (data, index) = decode_ssz_list(bytes, index)?;
-        let (lock, index) = decode_ssz_h256(bytes, index)?;
-        Ok((
-            CellOutput {
-                capacity,
-                data,
-                lock,
-            },
-            index,
-        ))
-    }
-}
-
-pub fn decode_ssz_h256(bytes: &[u8], index: usize) -> Result<(H256, usize), DecodeError> {
-    if bytes.len() < 32 || bytes.len() - 32 < index {
-        Err(DecodeError::TooShort)
-    } else {
-        Ok((H256::from(&bytes[index..(index + 32)]), index + 32))
     }
 }
 
@@ -799,35 +597,10 @@ mod tests {
             let size: usize = (0..100).map(|_| Header::random().to_protobuf().len()).sum();
             println!("protobuf size: {}", size);
 
-            let size: usize = (0..100).map(|_| Block::random(100, 3).to_protobuf().len()).sum();
+            let size: usize = (0..100)
+                .map(|_| Block::random(100, 3).to_protobuf().len())
+                .sum();
             println!("protobuf block size: {}", size);
-        }
-    }
-
-    mod ssz {
-        use super::*;
-
-        #[test]
-        fn ser_de_header() {
-            let header = Header::random();
-            let data = header.to_ssz();
-            assert_eq!(header, Header::from_ssz(&data));
-        }
-
-        #[test]
-        fn ser_de_block() {
-            let block = Block::random(100, 3);
-            let data = block.to_ssz();
-            assert_eq!(block, Block::from_ssz(&data));
-        }
-
-        #[test]
-        fn data_size() {
-            let size: usize = (0..100).map(|_| Header::random().to_ssz().len()).sum();
-            println!("ssz header size: {}", size);
-
-            let size: usize = (0..100).map(|_| Block::random(100, 3).to_ssz().len()).sum();
-            println!("ssz block size: {}", size);
         }
     }
 }

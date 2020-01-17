@@ -1,17 +1,17 @@
 [package]
 name = "serde_bench"
-version = "0.1.0"
+version = "0.2.0"
+edition = "2018"
 authors = ["quake wang <quake.wang@gmail.com>"]
 
 [dependencies]
 bigint = { git = "https://github.com/NervosFoundation/bigint" }
-rand = "0.5.0"
-flatbuffers = "0.5.0"
-protobuf = "2.1.1"
-ssz = { git = "https://github.com/sigp/lighthouse" }
+rand = "0.7"
+flatbuffers = "0.6"
+protobuf = "2.10"
 
 [dev-dependencies]
-criterion = "0.2"
+criterion = "0.3"
 
 [[bench]]
 name = "serialize_block"
