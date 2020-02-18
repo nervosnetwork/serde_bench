@@ -4,7 +4,8 @@ use serde_bench::Header;
 fn bench(c: &mut Criterion) {
     let flatbuffers = Fun::new("flatbuffers", |b, h: &Header| b.iter(|| h.to_flatbuffers()));
     let protobuf = Fun::new("protobuf", |b, h: &Header| b.iter(|| h.to_protobuf()));
-    let functions = vec![flatbuffers, protobuf];
+    let molecule = Fun::new("molecule", |b, h: &Header| b.iter(|| h.to_molecule()));
+    let functions = vec![flatbuffers, protobuf, molecule];
     let header = Header::random();
     c.bench_functions("serialize_header", functions, header);
 }

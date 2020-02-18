@@ -1,10 +1,16 @@
 pub mod bench_flatbuffers;
 pub mod bench_protobuf;
+pub mod bench_molecule;
 
 use bench_flatbuffers::{
     Block as FbsBlock, BlockBuilder, CellInput as FbsCellInput, CellInputBuilder,
     CellOutput as FbsCellOutput, CellOutputBuilder, Header as FbsHeader, HeaderBuilder,
     OutPoint as FbsOutPoint, OutPointBuilder, Transaction as FbsTransaction, TransactionBuilder,
+};
+use bench_molecule::{
+    Block as MolBlock, Byte32, Bytes as MolBytes, CellInput as MolCellInput, CellInputVec,
+    CellOutput as MolCellOutput, CellOutputVec, Header as MolHeader, OutPoint as MolOutPoint,
+    OutPointVec, Transaction as MolTransaction, TransactionVec, Uint32, Uint64,
 };
 use bench_protobuf::{
     Block as ProtobufBlock, CellInput as ProtobufCellInput, CellOutput as ProtobufCellOutput,
@@ -12,10 +18,12 @@ use bench_protobuf::{
 };
 use bigint::{H256, U256};
 use flatbuffers::{get_root, FlatBufferBuilder};
+use molecule::prelude::{Builder, Entity};
 use protobuf::{parse_from_bytes, Message};
 use rand::distributions::Standard;
 use rand::{thread_rng, Rng};
 use std::borrow::Borrow;
+use std::convert::TryInto;
 
 pub struct FlatbuffersVectorIterator<'a, T: flatbuffers::Follow<'a> + 'a> {
     vector: flatbuffers::Vector<'a, T>,
@@ -153,6 +161,26 @@ impl<'a> From<&'a Header> for ProtobufHeader {
     }
 }
 
+impl From<MolHeader> for Header {
+    fn from(header: MolHeader) -> Self {
+        Header {
+            version: u32::from_le_bytes(header.version().as_slice().try_into().unwrap()),
+            parent_hash: H256::from_slice(header.parent_hash().as_slice()),
+            timestamp: u64::from_le_bytes(header.timestamp().as_slice().try_into().unwrap()),
+            number: u64::from_le_bytes(header.number().as_slice().try_into().unwrap()),
+            txs_commit: H256::from_slice(header.txs_commit().as_slice()),
+            txs_proposal: H256::from_slice(header.txs_proposal().as_slice()),
+            difficulty: H256::from_slice(header.difficulty().as_slice()).into(),
+            cellbase_id: H256::from_slice(header.cellbase_id().as_slice()),
+            uncles_hash: H256::from_slice(header.uncles_hash().as_slice()),
+            seal: Seal {
+                nonce: u64::from_le_bytes(header.nonce().as_slice().try_into().unwrap()),
+                proof: header.proof().raw_data().as_ref().into(),
+            },
+        }
+    }
+}
+
 impl Header {
     pub fn random() -> Self {
         Header {
@@ -214,6 +242,33 @@ impl Header {
         let header = parse_from_bytes::<ProtobufHeader>(data).unwrap();
         header.borrow().into()
     }
+
+    pub fn to_molecule(&self) -> Vec<u8> {
+        MolHeader::new_builder()
+            .version(Uint32::from_slice(&self.version.to_le_bytes()).unwrap())
+            .parent_hash(Byte32::from_slice(&self.parent_hash).unwrap())
+            .timestamp(Uint64::from_slice(&self.timestamp.to_le_bytes()).unwrap())
+            .number(Uint64::from_slice(&self.number.to_le_bytes()).unwrap())
+            .txs_commit(Byte32::from_slice(&self.txs_commit).unwrap())
+            .txs_proposal(Byte32::from_slice(&self.txs_proposal).unwrap())
+            .difficulty(Byte32::from_slice(&H256::from(self.difficulty)).unwrap())
+            .nonce(Uint64::from_slice(&self.seal.nonce.to_le_bytes()).unwrap())
+            .proof(
+                MolBytes::new_builder()
+                    .extend(self.seal.proof.clone().into_iter().map(Into::into))
+                    .build(),
+            )
+            .cellbase_id(Byte32::from_slice(&self.cellbase_id).unwrap())
+            .uncles_hash(Byte32::from_slice(&self.uncles_hash).unwrap())
+            .build()
+            .as_slice()
+            .into()
+    }
+
+    pub fn from_molecule(data: &[u8]) -> Self {
+        let header = MolHeader::from_slice(data).unwrap();
+        header.into()
+    }
 }
 
 impl<'a> From<&'a FbsBlock<'a>> for Block {
@@ -241,6 +296,15 @@ impl<'a> From<&'a ProtobufBlock> for Block {
         Block {
             header: block.get_header().borrow().into(),
             transactions: block.get_transactions().iter().map(Into::into).collect(),
+        }
+    }
+}
+
+impl From<MolBlock> for Block {
+    fn from(block: MolBlock) -> Self {
+        Block {
+            header: block.header().into(),
+            transactions: block.transactions().into_iter().map(Into::into).collect(),
         }
     }
 }
@@ -363,6 +427,97 @@ impl Block {
         let block = parse_from_bytes::<ProtobufBlock>(data).unwrap();
         block.borrow().into()
     }
+
+    pub fn to_molecule(&self) -> Vec<u8> {
+        let header = MolHeader::new_builder()
+            .version(Uint32::from_slice(&self.header.version.to_le_bytes()).unwrap())
+            .parent_hash(Byte32::from_slice(&self.header.parent_hash).unwrap())
+            .timestamp(Uint64::from_slice(&self.header.timestamp.to_le_bytes()).unwrap())
+            .number(Uint64::from_slice(&self.header.number.to_le_bytes()).unwrap())
+            .txs_commit(Byte32::from_slice(&self.header.txs_commit).unwrap())
+            .txs_proposal(Byte32::from_slice(&self.header.txs_proposal).unwrap())
+            .difficulty(Byte32::from_slice(&H256::from(self.header.difficulty)).unwrap())
+            .nonce(Uint64::from_slice(&self.header.seal.nonce.to_le_bytes()).unwrap())
+            .proof(
+                MolBytes::new_builder()
+                    .extend(self.header.seal.proof.clone().into_iter().map(Into::into))
+                    .build(),
+            )
+            .cellbase_id(Byte32::from_slice(&self.header.cellbase_id).unwrap())
+            .uncles_hash(Byte32::from_slice(&self.header.uncles_hash).unwrap())
+            .build();
+
+        let transactions: Vec<_> = self
+            .transactions
+            .iter()
+            .map(|tx| {
+                let deps: Vec<_> = tx
+                    .deps
+                    .iter()
+                    .map(|out_point| {
+                        MolOutPoint::new_builder()
+                            .hash(Byte32::from_slice(&out_point.hash).unwrap())
+                            .index(Uint32::from_slice(&out_point.index.to_le_bytes()).unwrap())
+                            .build()
+                    })
+                    .collect();
+
+                let inputs: Vec<_> = tx
+                    .inputs
+                    .iter()
+                    .map(|input| {
+                        MolCellInput::new_builder()
+                            .hash(Byte32::from_slice(&input.previous_output.hash).unwrap())
+                            .index(
+                                Uint32::from_slice(&input.previous_output.index.to_le_bytes())
+                                    .unwrap(),
+                            )
+                            .unlock(
+                                MolBytes::new_builder()
+                                    .extend(input.unlock.clone().into_iter().map(Into::into))
+                                    .build(),
+                            )
+                            .build()
+                    })
+                    .collect();
+
+                let outputs: Vec<_> = tx
+                    .outputs
+                    .iter()
+                    .map(|output| {
+                        MolCellOutput::new_builder()
+                            .capacity(Uint64::from_slice(&output.capacity.to_le_bytes()).unwrap())
+                            .data(
+                                MolBytes::new_builder()
+                                    .extend(output.data.clone().into_iter().map(Into::into))
+                                    .build(),
+                            )
+                            .lock(Byte32::from_slice(&output.lock).unwrap())
+                            .build()
+                    })
+                    .collect();
+
+                MolTransaction::new_builder()
+                    .version(Uint32::from_slice(&tx.version.to_le_bytes()).unwrap())
+                    .deps(OutPointVec::new_builder().extend(deps).build())
+                    .inputs(CellInputVec::new_builder().extend(inputs).build())
+                    .outputs(CellOutputVec::new_builder().extend(outputs).build())
+                    .build()
+            })
+            .collect();
+
+        MolBlock::new_builder()
+            .header(header)
+            .transactions(TransactionVec::new_builder().extend(transactions).build())
+            .build()
+            .as_slice()
+            .into()
+    }
+
+    pub fn from_molecule(data: &[u8]) -> Self {
+        let block = MolBlock::from_slice(data).unwrap();
+        block.into()
+    }
 }
 
 impl Transaction {
@@ -421,6 +576,21 @@ impl<'a> From<&'a Transaction> for ProtobufTransaction {
     }
 }
 
+impl From<MolTransaction> for Transaction {
+    fn from(transaction: MolTransaction) -> Self {
+        let deps = transaction.deps().into_iter().map(Into::into).collect();
+        let inputs = transaction.inputs().into_iter().map(Into::into).collect();
+        let outputs = transaction.outputs().into_iter().map(Into::into).collect();
+
+        Transaction {
+            version: u32::from_le_bytes(transaction.version().as_slice().try_into().unwrap()),
+            deps,
+            inputs,
+            outputs,
+        }
+    }
+}
+
 impl OutPoint {
     pub fn random() -> Self {
         OutPoint {
@@ -454,6 +624,15 @@ impl<'a> From<&'a OutPoint> for ProtobufOutPoint {
         result.set_hash(out_point.hash.to_vec());
         result.set_index(out_point.index);
         result
+    }
+}
+
+impl From<MolOutPoint> for OutPoint {
+    fn from(out_point: MolOutPoint) -> Self {
+        OutPoint {
+            hash: H256::from_slice(out_point.hash().as_slice()),
+            index: u32::from_le_bytes(out_point.index().as_slice().try_into().unwrap()),
+        }
     }
 }
 
@@ -500,6 +679,18 @@ impl<'a> From<&'a CellInput> for ProtobufCellInput {
     }
 }
 
+impl From<MolCellInput> for CellInput {
+    fn from(cell_input: MolCellInput) -> Self {
+        CellInput {
+            previous_output: OutPoint {
+                hash: H256::from_slice(cell_input.hash().as_slice()),
+                index: u32::from_le_bytes(cell_input.index().as_slice().try_into().unwrap()),
+            },
+            unlock: cell_input.unlock().raw_data().as_ref().into(),
+        }
+    }
+}
+
 impl CellOutput {
     pub fn random() -> Self {
         CellOutput {
@@ -537,6 +728,16 @@ impl<'a> From<&'a CellOutput> for ProtobufCellOutput {
         result.set_data(cell_output.data.to_vec());
         result.set_lock(cell_output.lock.to_vec());
         result
+    }
+}
+
+impl From<MolCellOutput> for CellOutput {
+    fn from(cell_output: MolCellOutput) -> Self {
+        CellOutput {
+            capacity: u64::from_le_bytes(cell_output.capacity().as_slice().try_into().unwrap()),
+            data: cell_output.data().raw_data().as_ref().into(),
+            lock: H256::from_slice(cell_output.lock().as_slice()),
+        }
     }
 }
 
@@ -601,6 +802,35 @@ mod tests {
                 .map(|_| Block::random(100, 3).to_protobuf().len())
                 .sum();
             println!("protobuf block size: {}", size);
+        }
+    }
+
+    mod molecule {
+        use super::*;
+
+        #[test]
+        fn ser_de_header() {
+            let header = Header::random();
+            let data = header.to_molecule();
+            assert_eq!(header, Header::from_molecule(&data));
+        }
+
+        #[test]
+        fn ser_de_block() {
+            let block = Block::random(100, 3);
+            let data = block.to_molecule();
+            assert_eq!(block, Block::from_molecule(&data));
+        }
+
+        #[test]
+        fn data_size() {
+            let size: usize = (0..100).map(|_| Header::random().to_molecule().len()).sum();
+            println!("flatbuffers header size: {}", size);
+
+            let size: usize = (0..100)
+                .map(|_| Block::random(100, 3).to_molecule().len())
+                .sum();
+            println!("flatbuffers block size: {}", size);
         }
     }
 }

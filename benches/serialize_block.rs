@@ -8,7 +8,10 @@ fn bench(c: &mut Criterion) {
     let protobuf = Fun::new("protobuf", |b, block: &Block| {
         b.iter(|| block.to_protobuf())
     });
-    let functions = vec![flatbuffers, protobuf];
+    let molecule = Fun::new("molecule", |b, block: &Block| {
+        b.iter(|| block.to_molecule())
+    });
+    let functions = vec![flatbuffers, protobuf, molecule];
     let block = Block::random(100, 3);
     c.bench_functions("serialize_block", functions, block);
 }

@@ -1,12 +1,12 @@
 ## Feature
 
-| Feature          | FlatBuffers | Protobuf | Ssz |
-|------------------|-------------|----------|-----|
-| Schema           | Yes         | Yes      | No  |
-| Zero copy        | Yes         | No       | No  |
-| Random access    | Yes         | No       | No  |
-| Verifier         | Opt         | Yes      | No  |
-| Byte consistency | No          | No       | Yes |
+| Feature          | FlatBuffers | Protobuf | Molecule |
+|------------------|-------------|----------|----------|
+| Schema           | Yes         | Yes      | Yes      |
+| Zero copy        | Yes         | No       | Yes      |
+| Random access    | Yes         | No       | Yes      |
+| Verifier         | Opt         | Yes      | Opt      |
+| Byte consistency | No          | No       | Yes      |
 
 
 * Schema 方便做版本升级和向后兼容

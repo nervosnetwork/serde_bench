@@ -1,0 +1,73 @@
+union SyncPayload {
+    GetHeaders,
+    Headers,
+}
+
+array Uint32 [byte; 4];
+array Uint64 [byte; 8];
+array Byte32 [byte; 32];
+
+vector Bytes <byte>;
+vector Byte32Vec <Byte32>;
+vector HeaderVec <Header>;
+vector TransactionVec <Transaction>;
+vector OutPointVec <OutPoint>;
+vector CellInputVec <CellInput>;
+vector CellOutputVec <CellOutput>;
+
+table SyncMessage {
+    payload:        SyncPayload,
+}
+
+table GetHeaders {
+    version:                Uint32,
+    block_locator_hashes:   Byte32Vec,
+    hash_stop:              Byte32,
+}
+
+table Headers {
+    headers:                HeaderVec,
+}
+
+table Header {
+    version:        Uint32,
+    parent_hash:    Byte32,
+    timestamp:      Uint64,
+    number:         Uint64,
+    txs_commit:     Byte32,
+    txs_proposal:   Byte32,
+    difficulty:     Byte32,
+    nonce:          Uint64,
+    proof:          Bytes,
+    cellbase_id:    Byte32,
+    uncles_hash:    Byte32,
+}
+
+table Block {
+    header:          Header,
+    transactions:    TransactionVec,
+}
+
+table Transaction {
+    version:        Uint32,
+    deps:           OutPointVec,
+    inputs:         CellInputVec,
+    outputs:        CellOutputVec,
+}
+
+table OutPoint {
+    hash:           Byte32,
+    index:          Uint32,
+}
+
+table CellInput {
+    hash:           Byte32,
+    index:          Uint32,
+    unlock:         Bytes,
+}
+
+table CellOutput {
+    capacity:       Uint64,
+    data:           Bytes,
+    lock:           Byte32,
+}
