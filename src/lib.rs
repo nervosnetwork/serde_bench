@@ -799,7 +799,7 @@ mod tests {
         #[test]
         fn data_size() {
             let size: usize = (0..100).map(|_| Header::random().to_protobuf().len()).sum();
-            println!("protobuf size: {}", size);
+            println!("protobuf header size: {}", size);
 
             let size: usize = (0..100)
                 .map(|_| Block::random(100, 3).to_protobuf().len())
@@ -828,12 +828,12 @@ mod tests {
         #[test]
         fn data_size() {
             let size: usize = (0..100).map(|_| Header::random().to_molecule().len()).sum();
-            println!("flatbuffers header size: {}", size);
+            println!("molecule header size: {}", size);
 
             let size: usize = (0..100)
                 .map(|_| Block::random(100, 3).to_molecule().len())
                 .sum();
-            println!("flatbuffers block size: {}", size);
+            println!("molecule block size: {}", size);
         }
     }
 }
