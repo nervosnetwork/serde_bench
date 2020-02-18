@@ -1,6 +1,6 @@
 pub mod bench_flatbuffers;
-pub mod bench_protobuf;
 pub mod bench_molecule;
+pub mod bench_protobuf;
 
 use bench_flatbuffers::{
     Block as FbsBlock, BlockBuilder, CellInput as FbsCellInput, CellInputBuilder,
@@ -8,9 +8,12 @@ use bench_flatbuffers::{
     OutPoint as FbsOutPoint, OutPointBuilder, Transaction as FbsTransaction, TransactionBuilder,
 };
 use bench_molecule::{
-    Block as MolBlock, Byte32, Bytes as MolBytes, CellInput as MolCellInput, CellInputVec,
-    CellOutput as MolCellOutput, CellOutputVec, Header as MolHeader, OutPoint as MolOutPoint,
-    OutPointVec, Transaction as MolTransaction, TransactionVec, Uint32, Uint64,
+    Block as MolBlock, BlockReader as MolBlockReader, Byte32, Bytes as MolBytes,
+    CellInput as MolCellInput, CellInputReader as MolCellInputReader, CellInputVec,
+    CellOutput as MolCellOutput, CellOutputReader as MolCellOutputReader, CellOutputVec,
+    Header as MolHeader, HeaderReader as MolHeaderReader, OutPoint as MolOutPoint,
+    OutPointReader as MolOutPointReader, OutPointVec, Transaction as MolTransaction,
+    TransactionReader as MolTransactionReader, TransactionVec, Uint32, Uint64,
 };
 use bench_protobuf::{
     Block as ProtobufBlock, CellInput as ProtobufCellInput, CellOutput as ProtobufCellOutput,
@@ -18,7 +21,7 @@ use bench_protobuf::{
 };
 use bigint::{H256, U256};
 use flatbuffers::{get_root, FlatBufferBuilder};
-use molecule::prelude::{Builder, Entity};
+use molecule::prelude::{Builder, Entity, Reader};
 use protobuf::{parse_from_bytes, Message};
 use rand::distributions::Standard;
 use rand::{thread_rng, Rng};
@@ -161,8 +164,8 @@ impl<'a> From<&'a Header> for ProtobufHeader {
     }
 }
 
-impl From<MolHeader> for Header {
-    fn from(header: MolHeader) -> Self {
+impl From<MolHeaderReader<'_>> for Header {
+    fn from(header: MolHeaderReader) -> Self {
         Header {
             version: u32::from_le_bytes(header.version().as_slice().try_into().unwrap()),
             parent_hash: H256::from_slice(header.parent_hash().as_slice()),
@@ -266,7 +269,7 @@ impl Header {
     }
 
     pub fn from_molecule(data: &[u8]) -> Self {
-        let header = MolHeader::from_slice(data).unwrap();
+        let header = MolHeaderReader::from_slice(data).unwrap();
         header.into()
     }
 }
@@ -300,11 +303,11 @@ impl<'a> From<&'a ProtobufBlock> for Block {
     }
 }
 
-impl From<MolBlock> for Block {
-    fn from(block: MolBlock) -> Self {
+impl From<MolBlockReader<'_>> for Block {
+    fn from(block: MolBlockReader) -> Self {
         Block {
             header: block.header().into(),
-            transactions: block.transactions().into_iter().map(Into::into).collect(),
+            transactions: block.transactions().iter().map(Into::into).collect(),
         }
     }
 }
@@ -515,7 +518,7 @@ impl Block {
     }
 
     pub fn from_molecule(data: &[u8]) -> Self {
-        let block = MolBlock::from_slice(data).unwrap();
+        let block = MolBlockReader::from_slice(data).unwrap();
         block.into()
     }
 }
@@ -576,11 +579,11 @@ impl<'a> From<&'a Transaction> for ProtobufTransaction {
     }
 }
 
-impl From<MolTransaction> for Transaction {
-    fn from(transaction: MolTransaction) -> Self {
-        let deps = transaction.deps().into_iter().map(Into::into).collect();
-        let inputs = transaction.inputs().into_iter().map(Into::into).collect();
-        let outputs = transaction.outputs().into_iter().map(Into::into).collect();
+impl From<MolTransactionReader<'_>> for Transaction {
+    fn from(transaction: MolTransactionReader) -> Self {
+        let deps = transaction.deps().iter().map(Into::into).collect();
+        let inputs = transaction.inputs().iter().map(Into::into).collect();
+        let outputs = transaction.outputs().iter().map(Into::into).collect();
 
         Transaction {
             version: u32::from_le_bytes(transaction.version().as_slice().try_into().unwrap()),
@@ -627,8 +630,8 @@ impl<'a> From<&'a OutPoint> for ProtobufOutPoint {
     }
 }
 
-impl From<MolOutPoint> for OutPoint {
-    fn from(out_point: MolOutPoint) -> Self {
+impl From<MolOutPointReader<'_>> for OutPoint {
+    fn from(out_point: MolOutPointReader) -> Self {
         OutPoint {
             hash: H256::from_slice(out_point.hash().as_slice()),
             index: u32::from_le_bytes(out_point.index().as_slice().try_into().unwrap()),
@@ -679,8 +682,8 @@ impl<'a> From<&'a CellInput> for ProtobufCellInput {
     }
 }
 
-impl From<MolCellInput> for CellInput {
-    fn from(cell_input: MolCellInput) -> Self {
+impl From<MolCellInputReader<'_>> for CellInput {
+    fn from(cell_input: MolCellInputReader) -> Self {
         CellInput {
             previous_output: OutPoint {
                 hash: H256::from_slice(cell_input.hash().as_slice()),
@@ -731,8 +734,8 @@ impl<'a> From<&'a CellOutput> for ProtobufCellOutput {
     }
 }
 
-impl From<MolCellOutput> for CellOutput {
-    fn from(cell_output: MolCellOutput) -> Self {
+impl From<MolCellOutputReader<'_>> for CellOutput {
+    fn from(cell_output: MolCellOutputReader) -> Self {
         CellOutput {
             capacity: u64::from_le_bytes(cell_output.capacity().as_slice().try_into().unwrap()),
             data: cell_output.data().raw_data().as_ref().into(),
